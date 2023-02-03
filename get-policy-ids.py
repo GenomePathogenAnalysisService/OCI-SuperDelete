@@ -15,7 +15,6 @@ if __name__ == "__main__":
             #JSON parsing doesn't like an empty string, so exit nicely if JSON parsing errors
             policies = json.loads(sys.stdin.read().strip())
         except json.decoder.JSONDecodeError:
-            print("No policies to delete")
             sys.exit(0)
 
         #Strict list of the policies to delete based on policies created
@@ -28,5 +27,3 @@ if __name__ == "__main__":
         for policy in policies['data']:
             if policy['name'] in whitelist:
                 print(policy['id'])
-    else:
-        print("Usage: python get.py <5 letter ID>")
