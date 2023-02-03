@@ -11,7 +11,12 @@ if __name__ == "__main__":
         #We have the 5 letters so lets find the OCIDs
 
         #Get from stdin
-        policies = json.loads(sys.stdin.read().strip())
+        try:
+            #JSON parsing doesn't like an empty string, so exit nicely if JSON parsing errors
+            policies = json.loads(sys.stdin.read().strip())
+        except json.decoder.JSONDecodeError:
+            print("No policies to delete")
+            sys.exit(0)
 
         #Strict list of the policies to delete based on policies created
         whitelist = [f"sp3-{sys.argv[1]}_HeadNode_Artifacts",
