@@ -9,5 +9,5 @@
 for policy in $(oci iam policy list -c $1 --all | python3 get-policy-ids.py $2);
 do
     echo Deleting $policy
-    oci iam policy delete --policy-id $policy --wait-for-state SUCCEEDED  --wait-for-state FAILED
+    oci iam policy delete --force --policy-id $policy
 done
