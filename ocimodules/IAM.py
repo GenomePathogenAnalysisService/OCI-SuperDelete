@@ -44,16 +44,24 @@ def Login(config, signer, startcomp):
     c = []
 
     # Adding Start compartment
-    compartment = identity.get_compartment(compartment_id=startcomp, retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY).data
+    if "user" in config or ".tenancy." not in startcomp:
+        compartment = identity.get_compartment(compartment_id=startcomp, retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY).data
+    else:
+        # Bug fix - for working on root compartment using instance principle.
+        compartment = oci.identity.models.Compartment()
+        compartment.id = startcomp
+        compartment.name = "root compartment"
+        compartment.lifecycle_state = "ACTIVE"
+
     newcomp = OCICompartments()
     newcomp.details = compartment
-    if config['tenancy'] == compartment.id:
+    if ".tenancy." in startcomp:
         newcomp.fullpath = "/root"
         newcomp.level = 0
     else:
         newcomp.level = 0
         newcomp.fullpath = compartment.name
-        c.append(newcomp)
+    c.append(newcomp)
 
     # Add first level subcompartments
     compartments = GetCompartments(identity, startcomp)
@@ -102,7 +110,7 @@ def Login(config, signer, startcomp):
                                     for sub4 in subcompartments4:
                                         if sub4.lifecycle_state == "ACTIVE":
                                             newcomp = OCICompartments()
-                                            newcomp.details = sub
+                                            newcomp.details = sub4
                                             newcomp.fullpath = "{}{}/{}/{}/{}/{}".format(fullpath, subpath1, subpath2,
                                                                                          subpath3, subpath4, sub4.name)
                                             newcomp.level = 5

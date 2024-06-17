@@ -1,4 +1,5 @@
 import oci
+import ocimodules.Search
 import time
 
 WaitRefresh = 10
@@ -66,36 +67,49 @@ def DeleteSubnets(config, signer, Compartments, vcn):
     object = oci.core.VirtualNetworkClient(config, signer=signer)
 
     print("Getting subnets for {}".format(vcn.display_name))
+
+    # Switching to Search function to find underlaying VCN resources
+    # for C in Compartments:
+    #     compartment = C.details
+    #     try:
+    #         items = oci.pagination.list_call_get_all_results(object.list_subnets, compartment_id=compartment.id, vcn_id=vcn.id, retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY).data
+    #         for item in items:
+    #             if (item.lifecycle_state != "TERMINATED"):
+    #                 AllItems.append(item)
+    #             print("- {} - {}".format(item.display_name, item.lifecycle_state))
+    #     except Exception:
+    #         print("Error listing for compartment {}".format(compartment.name))
+    #         continue
+
     for C in Compartments:
         compartment = C.details
-        try:
-            items = oci.pagination.list_call_get_all_results(object.list_subnets, compartment_id=compartment.id, vcn_id=vcn.id, retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY).data
-            for item in items:
-                if (item.lifecycle_state != "TERMINATED"):
-                    AllItems.append(item)
-                print("- {} - {}".format(item.display_name, item.lifecycle_state))
-        except Exception:
-            print("Error listing for compartment {}".format(compartment.name))
-            continue
+        # query = "query subnet resources where vcnId= '{}'".format(vcn.id)
+        # items = ocimodules.Search.SearchResources(config, signer, query)
+        object = oci.core.VirtualNetworkClient(config, signer=signer)
+        items = oci.pagination.list_call_get_all_results(
+            object.list_subnets,
+            compartment_id=compartment.id,
+            vcn_id=vcn.id,
+            lifecycle_state=oci.core.models.Subnet.LIFECYCLE_STATE_AVAILABLE,
+        ).data
+        for item in items:
+            # if (item.lifecycle_state != "TERMINATED"):
+            AllItems.append(item)
 
     itemsPresent = True
     iteration = 0
-
+    
     while itemsPresent:
         count = 0
         for item in AllItems:
             try:
                 itemstatus = object.get_subnet(subnet_id=item.id).data
-                if itemstatus.lifecycle_state != "TERMINATED":
-                    if itemstatus.lifecycle_state != "TERMINATING":
-                        try:
-                            print("Deleting: {}".format(itemstatus.display_name))
-                            object.delete_subnet(subnet_id=itemstatus.id)
-                        except Exception:
-                            print("error trying to delete: {}".format(itemstatus.display_name))
-                    else:
-                        print("{} = {}".format(itemstatus.display_name, itemstatus.lifecycle_state))
-                    count = count + 1
+                try:
+                    print("Deleting: {}".format(itemstatus.display_name))
+                    object.delete_subnet(subnet_id=itemstatus.id)
+                except Exception:
+                    print("error trying to delete: {}".format(itemstatus.display_name))
+                count = count + 1
             except Exception:
                 print("error deleting {}, probably already deleted".format(item.display_name))
         if count > 0:
@@ -753,7 +767,7 @@ def DeleteDNSResolvers(config, signer, compartment):
         items = []
 
     for item in items:
-        if (item.lifecycle_state != "DELETED"):
+        if (item.lifecycle_state != "DELETED") and (not item.is_protected):
             AllItems.append(item)
             print("- {} - {}".format(item.display_name, item.lifecycle_state))
 
